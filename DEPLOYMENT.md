@@ -2,6 +2,9 @@
 
 ## Configure and run the server
 
+The server targets Node.js 24.x; the `engines.node` setting in `package.json`
+keeps deployment platforms from selecting an incompatible newer runtime.
+
 1. Copy `.env.example` to `.env` and set `SHEET_ID` and the Google Sheets credentials.
    You can use a credentials file, a JSON value in `GOOGLE_SERVICE_ACCOUNT_JSON`,
    or the cloud host's attached service account (leave both credential variables
