@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.autobid-cursors.json
+log.txt
+npm-debug.log*
+_works/_documents/freelanceranytime.json
