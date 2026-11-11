@@ -27,7 +27,9 @@ keeps deployment platforms from selecting an incompatible newer runtime.
 5. Configure `CORS_ORIGINS` for the extension origins if you do not want the default
    wildcard. Set this variable in the hosting dashboard when `.env` is unavailable.
 6. Open `http://localhost:5000/` to use the project-forwarding interface served by the
-   local server. The extension popup continues to provide the same controls.
+   local server. The same interface is included in `public/` and served at the
+   deployed server's root URL. The extension popup continues to provide the same
+   controls.
 
 Do not commit `.env` or service-account credentials. The server does not load a
 service-account file from the repository by default; configure

@@ -79,7 +79,7 @@ import {
 } from './projectSkills.js';
 
 const SERVER_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const FORWARDER_UI_ROOT = path.resolve(SERVER_ROOT, "..", "get projects");
+const FORWARDER_UI_ROOT = path.join(SERVER_ROOT, "public");
 dotenv.config({ path: path.join(SERVER_ROOT, ".env") });
 
 const app = express();
