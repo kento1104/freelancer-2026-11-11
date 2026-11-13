@@ -66,6 +66,7 @@ import getFormatedLocalTime, {
     formatJstDateTime,
     isProjectRegisteredWithinLast24Hours,
     parseJstTimestamp,
+    PROJECT_MAX_AGE_MS,
 } from './_toolkit/getFormatedLocalTime.js';
 
 import projectPlanner_PlanBid, { normalizePlanBidSettings } from './projectPlanner_PlanBid.js';
@@ -1532,6 +1533,11 @@ function getProjectAgeSkipReason(project) {
     return "";
 }
 
+function isProjectOlderThan24Hours(project) {
+    const registeredAtMs = parseJstTimestamp(project.timeStamp);
+    return registeredAtMs !== null && Date.now() - registeredAtMs > PROJECT_MAX_AGE_MS;
+}
+
 async function selectProject_ABD(userInfo) {
     const username = String(userInfo.username ?? "").trim();
     if (!username) {
@@ -1557,13 +1563,15 @@ async function selectProject_ABD(userInfo) {
                 if (project.id && project.href && !hasAttemptedProject(username, project)) {
                     const ageSkipReason = getProjectAgeSkipReason(project);
                     if (ageSkipReason) {
-                        await appendMyEvent({
-                            projectId: project.id,
-                            projectUrl: project.href,
-                            account: username,
-                            bidStatus: "Skip",
-                            statusReason: ageSkipReason,
-                        });
+                        if (!isProjectOlderThan24Hours(project)) {
+                            await appendMyEvent({
+                                projectId: project.id,
+                                projectUrl: project.href,
+                                account: username,
+                                bidStatus: "Skip",
+                                statusReason: ageSkipReason,
+                            });
+                        }
                     } else {
                         const cachedProposal = pendingProposalsByUser.get(normalizeUsername(username));
                         if (cachedProposal) return cachedProposal;
@@ -1617,7 +1625,7 @@ async function selectProject_ABD(userInfo) {
                 startRow,
                 endRow,
             );
-            const expiredProjectEvents = [];
+            const timestampSkipEvents = [];
 
             for (let index = 0; index < rows.length; index++) {
                 const rowNumber = startRow + index;
@@ -1634,13 +1642,15 @@ async function selectProject_ABD(userInfo) {
 
                 const ageSkipReason = getProjectAgeSkipReason(project);
                 if (ageSkipReason) {
-                    expiredProjectEvents.push({
-                        projectId: project.id,
-                        projectUrl: project.href,
-                        account: username,
-                        bidStatus: "Skip",
-                        statusReason: ageSkipReason,
-                    });
+                    if (!isProjectOlderThan24Hours(project)) {
+                        timestampSkipEvents.push({
+                            projectId: project.id,
+                            projectUrl: project.href,
+                            account: username,
+                            bidStatus: "Skip",
+                            statusReason: ageSkipReason,
+                        });
+                    }
                     cursor.nextRow = rowNumber + 1;
                     saveSelectionCursors();
                     continue;
@@ -1716,11 +1726,11 @@ async function selectProject_ABD(userInfo) {
                     cursor.pendingRow = rowNumber;
                     cursor.pendingProjectId = project.id;
                     pendingProposalsByUser.set(normalizeUsername(username), proposal);
-                    await appendMyEvents(expiredProjectEvents);
+                    await appendMyEvents(timestampSkipEvents);
                     saveSelectionCursors();
                     return proposal;
                 } catch (error) {
-                    await appendMyEvents(expiredProjectEvents);
+                    await appendMyEvents(timestampSkipEvents);
                     releaseProject(normalizeUsername(username), projectIdentity);
                     cursor.nextRow = rowNumber;
                     saveSelectionCursors();
@@ -1728,7 +1738,7 @@ async function selectProject_ABD(userInfo) {
                 }
             }
 
-            await appendMyEvents(expiredProjectEvents);
+            await appendMyEvents(timestampSkipEvents);
             cursor.nextRow = endRow + 1;
             saveSelectionCursors();
         }
@@ -1867,7 +1877,11 @@ app.post("/need_project", async (req, res) => {
         }
         res.json(selected_project);
     } catch (error) {
-        console.error(error);
+        console.error("Could not select project:", {
+            message: error instanceof Error ? error.message : String(error),
+            code: error?.code,
+            status: error?.status,
+        });
         res.status(error.status || 500).json({ error: error.message || "Could not select a project." });
     }
 });
